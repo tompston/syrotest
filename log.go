@@ -36,13 +36,7 @@ type Log struct {
 	Fields  LogFields `json:"fields,omitempty" bson:"fields,omitempty"`     // Optional fields
 }
 
-type LogFilter struct {
-	TimeseriesFilter `json:"timeseries_filter"`
-	Source           string    `json:"source"`
-	Event            string    `json:"event"`
-	EventID          string    `json:"event_id"`
-	Level            *LogLevel `json:"level"`
-}
+type LogFields map[string]interface{}
 
 type LogLevel int8
 
@@ -54,6 +48,14 @@ const (
 	ERROR LogLevel = 4
 	FATAL LogLevel = 5
 )
+
+type LogFilter struct {
+	TimeseriesFilter `json:"timeseries_filter"`
+	Source           string    `json:"source"`
+	Event            string    `json:"event"`
+	EventID          string    `json:"event_id"`
+	Level            *LogLevel `json:"level"`
+}
 
 func (l LogLevel) String() string {
 	switch l {
@@ -73,8 +75,6 @@ func (l LogLevel) String() string {
 		return "unknown"
 	}
 }
-
-type LogFields map[string]interface{}
 
 func newLog(level LogLevel, msg, source, event, eventID string, fields ...LogFields) Log {
 	log := Log{
