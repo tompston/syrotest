@@ -1,7 +1,7 @@
 package syromongo
 
 import (
-	"github.com/tompston/syrotest/syrotest"
+	"github.com/tompston/syro"
 )
 
-var qwe = syrotest.LoggerProps{}
+var qwe = syro.LoggerProps{}
