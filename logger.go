@@ -6,7 +6,6 @@ import (
 	"time"
 )
 
-// Logger interface implements the methods for logging
 type Logger interface {
 	Error(msg string, lf ...LogFields) error
 	Info(msg string, lf ...LogFields) error
@@ -24,16 +23,15 @@ type Logger interface {
 	SetEventID(v string) Logger               // SetEventID sets the event id of the log
 }
 
-// Log struct for storing the log data. Event, EventID, and Fields are optional.
 type Log struct {
-	ID      string    `json:"_id" bson:"_id"`                               // (not logged to the console)
 	Time    time.Time `json:"time" bson:"time"`                             // Time of the log (UTC)
-	Level   LogLevel  `json:"level" bson:"level"`                           // Log level
+	ID      string    `json:"_id" bson:"_id"`                               // (not logged to the console)
 	Message string    `json:"message" bson:"message"`                       // Logged message
 	Source  string    `json:"source,omitempty" bson:"source,omitempty"`     // Source of the log (api, pooler, etc.)
 	Event   string    `json:"event,omitempty" bson:"event,omitempty"`       // Event of the log (api-auth-request, binance-eth-pooler, etc.)
 	EventID string    `json:"event_id,omitempty" bson:"event_id,omitempty"` // (not logged to the console)
 	Fields  LogFields `json:"fields,omitempty" bson:"fields,omitempty"`     // Optional fields
+	Level   LogLevel  `json:"level" bson:"level"`                           // Log level
 }
 
 type LogFields map[string]interface{}
@@ -163,6 +161,7 @@ type ConsoleLogger struct {
 }
 
 func NewConsoleLogger(s *LoggerSettings) *ConsoleLogger { return &ConsoleLogger{Settings: s} }
+
 func (lg *ConsoleLogger) GetProps() LoggerProps {
 	return LoggerProps{
 		Settings: lg.Settings,
