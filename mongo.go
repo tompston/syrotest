@@ -238,7 +238,7 @@ func (m *MongoCronStorage) RegisterJob(source, name, freq, descr string, status 
 	set := bson.M{
 		"frequency":   freq,
 		"status":      status,
-		"description": descr,
+		"descr": descr,
 		"updated_at":  time.Now().UTC(),
 	}
 

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -17,11 +19,6 @@ import (
 func TestLogger(t *testing.T) {
 	t.Run("test-log-creation", func(t *testing.T) {
 		log := NewLog(ERROR, "qweqwe", "my-source", "my-event", "my-event-id")
-
-		// decoded, err := decodeStructToStrings(log)
-		// if err != nil {
-		// 	t.Fatal(err)
-		// }
 
 		decodedJSON, err := json.Marshal(log)
 		if err != nil {
@@ -210,7 +207,6 @@ func TestMongoLogger(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
 	defer conn.Disconnect(context.Background())
 
 	t.Run("test-bson-unmarshalling", func(t *testing.T) {
@@ -460,24 +456,65 @@ func stringIncludes(s string, arr []string) error {
 	return nil
 }
 
-// type decodedStrings struct {
-// 	JSON string
-// 	BSON string
-// }
+func TestJobRunLocking(t *testing.T) {
 
-// // Run the struct through json and bson marshalers and return the results as strings.
-// func decodeStructToStrings(v any) (*decodedStrings, error) {
-// 	json, err := json.Marshal(&v)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+}
 
-// bson, err := bson.MarshalExtJSON(&v, false, false)
-// if err != nil {
-// 	return nil, err
-// }
+func TestJobLocker(t *testing.T) {
+	t.Run("test-job-run", func(t *testing.T) {
+		counter := int32(0)
+		j := newJobLock(func() {
+			time.Sleep(100 * time.Millisecond)
+			atomic.AddInt32(&counter, 1)
+		}, "testJob")
 
-// 	return &decodedStrings{
-// 		JSON: string(json),
-// 		BSON: string(bson)}, nil
-// }
+		var wg sync.WaitGroup
+		wg.Add(10)
+		for i := 0; i < 10; i++ {
+			go func() {
+				defer wg.Done()
+				j.Run()
+			}()
+		}
+		wg.Wait()
+
+		if atomic.LoadInt32(&counter) != 1 {
+			t.Fatalf("Expected job function to run once, but it ran %d times", counter)
+		}
+	})
+
+	t.Run("test-lock", func(t *testing.T) {
+		counter := int32(0)
+		j := newJobLock(func() {
+			time.Sleep(50 * time.Millisecond)
+			atomic.AddInt32(&counter, 1)
+		}, "testJob")
+
+		// first run
+		go j.Run()
+
+		// sleep for a moment to allow the first job to start running
+		time.Sleep(10 * time.Millisecond)
+
+		// second run
+		go j.Run()
+
+		// sleep for a moment to allow the second job to attempt to start
+		time.Sleep(10 * time.Millisecond)
+
+		// At this point, the second job should have attempted to start and failed,
+		// so the counter should still be 0
+		if atomic.LoadInt32(&counter) != 0 {
+			t.Fatalf("Expected job function not to run, but it ran %d times", counter)
+		}
+
+		// Wait for the first job to complete
+		time.Sleep(50 * time.Millisecond)
+
+		// Now the counter should be 1
+		if atomic.LoadInt32(&counter) != 1 {
+			t.Fatalf("Expected job function to run once, but it ran %d times", counter)
+		}
+	})
+
+}

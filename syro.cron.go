@@ -22,7 +22,7 @@ type CronStorage interface {
 	// FindCronJobs returns a list of all registered jobs
 	FindCronJobs() ([]CronJob, error)
 	// RegisterJob registers the details of the selected job
-	RegisterJob(source, name, frequency, description string, status JobStatus, err error) error
+	RegisterJob(source, name, frequency, descr string, status JobStatus, err error) error
 	// RegisterExecution registers the execution of a job if the storage is specified
 	RegisterExecution(*CronExecLog) error
 	// FindExecutions returns a list of job executions that match the filter
@@ -45,9 +45,15 @@ func (s *CronScheduler) WithStorage(storage CronStorage) *CronScheduler {
 // mutex lock to prevent the execution of the job if it is already running.
 // If a storage interface is provided, the job and job execution logs
 // will be stored using it
+//
+// TODO: should job be a pointer?
 func (s *CronScheduler) Register(j *Job) error {
 	if j == nil {
 		return fmt.Errorf("job cannot be nil")
+	}
+
+	if s == nil {
+		return fmt.Errorf("cron scheduler cannot be nil")
 	}
 
 	if s.cron == nil {
@@ -94,9 +100,10 @@ func (s *CronScheduler) Register(j *Job) error {
 		}
 	}
 
-	// Accumulate errors in the c.AddJob function, because the cron.Job param does not return anything
+	joblock := newJobLock(func() {
 
-	_, err := s.cron.AddJob(freq, newJobLock(func() {
+		jobStart := time.Now()
+		// Accumulate errors in the c.AddJob function, because the cron.Job param does not return anything
 		errors := NewErrGroup()
 
 		if storageIsSpecified {
@@ -104,8 +111,6 @@ func (s *CronScheduler) Register(j *Job) error {
 				errors.Add(fmt.Errorf("failed to set job %v to running: %v", name, err))
 			}
 		}
-
-		now := time.Now()
 
 		// Passed in job function which should be executed by the cron job
 		err := j.Func()
@@ -119,7 +124,7 @@ func (s *CronScheduler) Register(j *Job) error {
 		}
 
 		if storageIsSpecified {
-			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, now, err)); err != nil {
+			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, jobStart, err)); err != nil {
 				errors.Add(fmt.Errorf("failed to register execution for %v: %v", name, err))
 			}
 
@@ -130,9 +135,9 @@ func (s *CronScheduler) Register(j *Job) error {
 
 		// todo: what should be done with errors that happened in the job?
 
-	}, name))
+	}, name)
 
-	if err != nil {
+	if _, err := s.cron.AddJob(freq, joblock); err != nil {
 		return err
 	}
 
@@ -173,7 +178,7 @@ type CronJob struct {
 	Name            string     `json:"name" bson:"name"`
 	Status          string     `json:"status" bson:"status"`
 	Frequency       string     `json:"frequency" bson:"frequency"`
-	Description     string     `json:"description" bson:"description"`
+	Description     string     `json:"descr" bson:"descr"`
 	Error           string     `json:"error" bson:"error"`
 	ExitedWithError bool       `json:"exited_with_error" bson:"exited_with_error"`
 }
