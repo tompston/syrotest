@@ -73,7 +73,11 @@ func (s *CronScheduler) Register(j *Job) error {
 
 	// if the name of the job is already taken, return an error
 	for _, job := range s.Jobs {
-		if job != nil && job.Name == j.Name {
+		if job == nil {
+			return fmt.Errorf("one of the previously registered jobs is nil")
+		}
+
+		if job.Name == j.Name {
 			return fmt.Errorf("job with name %v already exists", j.Name)
 		}
 	}
@@ -106,16 +110,12 @@ func (s *CronScheduler) Register(j *Job) error {
 		// Passed in job function which should be executed by the cron job
 		err := j.Func()
 
-		if j.PostExecution != nil {
-			j.PostExecution(err)
+		if j.OnComplete != nil {
+			j.OnComplete(err)
 		}
 
 		if err != nil && j.OnError != nil {
 			j.OnError(err)
-		}
-
-		if err == nil && j.OnSuccess != nil {
-			j.OnSuccess()
 		}
 
 		if storageIsSpecified {
@@ -159,9 +159,8 @@ type Job struct {
 	Description string       // Optional. Description of the job
 	// TODO: add these in the logic and test them
 	// TODO: add a context input so that it would be possible to optionally cancel the job if it takes longer than x to run
-	OnSuccess     func()      // Optional. Function to be executed after the job executes without errors
-	OnError       func(error) // Optional. Function to be executed if the job returns an error
-	PostExecution func(error) // Optional. Combined version of OnError and OnSuccess functions.
+	OnError    func(error) // Optional. Function to be executed if the job returns an error
+	OnComplete func(error) // Optional. Function to be executed when the job is completed.
 }
 
 // CronJob stores information about the registered job
@@ -169,6 +168,7 @@ type CronJob struct {
 	ID              string     `json:"_id" bson:"_id"`
 	CreatedAt       time.Time  `json:"created_at" bson:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at" bson:"updated_at"`
+	FinishedAt      *time.Time `json:"finished_at" bson:"finished_at"`
 	Source          string     `json:"source" bson:"source"`
 	Name            string     `json:"name" bson:"name"`
 	Status          string     `json:"status" bson:"status"`
@@ -176,7 +176,6 @@ type CronJob struct {
 	Description     string     `json:"description" bson:"description"`
 	Error           string     `json:"error" bson:"error"`
 	ExitedWithError bool       `json:"exited_with_error" bson:"exited_with_error"`
-	FinishedAt      *time.Time `json:"finished_at" bson:"finished_at"`
 }
 
 // CronExecLog stores information about the job execution
@@ -216,10 +215,11 @@ func newCronExecutionLog(source, name string, initializedAt time.Time, err error
 type JobStatus string
 
 const (
-	JobStatusInitialized JobStatus = "initialized"
-	JobStatusRunning     JobStatus = "running"
-	JobStatusDone        JobStatus = "done"
-	JobStatusInactive    JobStatus = "inactive"
+	JobStatusInitialized JobStatus = "initialized" // status set when the cron is added, but has not been run yet
+	JobStatusRunning     JobStatus = "running"     // crons which are currently running
+	JobStatusDone        JobStatus = "done"        // crons which are finished
+	JobStatusInactive    JobStatus = "inactive"    // crons which are not running
+	JobStatusRemoved     JobStatus = "removed"     // crons which are not present in the current list for the source
 )
 
 // jobLock is a mutex lock that prevents the execution of a job if it is already running.

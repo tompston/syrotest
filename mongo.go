@@ -111,29 +111,12 @@ func (lg *MongoLogger) LogExists(filter any) (bool, error) {
 	return !log.Time.IsZero(), nil
 }
 
-func (lg *MongoLogger) Debug(msg string, lf ...LogFields) error {
-	return lg.log(DEBUG, msg, lf...)
-}
-
-func (lg *MongoLogger) Trace(msg string, lf ...LogFields) error {
-	return lg.log(TRACE, msg, lf...)
-}
-
-func (lg *MongoLogger) Error(msg string, lf ...LogFields) error {
-	return lg.log(ERROR, msg, lf...)
-}
-
-func (lg *MongoLogger) Info(msg string, lf ...LogFields) error {
-	return lg.log(INFO, msg, lf...)
-}
-
-func (lg *MongoLogger) Warn(msg string, lf ...LogFields) error {
-	return lg.log(WARN, msg, lf...)
-}
-
-func (lg *MongoLogger) Fatal(msg string, lf ...LogFields) error {
-	return lg.log(FATAL, msg, lf...)
-}
+func (lg *MongoLogger) Debug(msg string, lf ...LogFields) error { return lg.log(DEBUG, msg, lf...) }
+func (lg *MongoLogger) Trace(msg string, lf ...LogFields) error { return lg.log(TRACE, msg, lf...) }
+func (lg *MongoLogger) Error(msg string, lf ...LogFields) error { return lg.log(ERROR, msg, lf...) }
+func (lg *MongoLogger) Info(msg string, lf ...LogFields) error  { return lg.log(INFO, msg, lf...) }
+func (lg *MongoLogger) Warn(msg string, lf ...LogFields) error  { return lg.log(WARN, msg, lf...) }
+func (lg *MongoLogger) Fatal(msg string, lf ...LogFields) error { return lg.log(FATAL, msg, lf...) }
 
 // FindLogs returns logs that match the filter
 func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
@@ -174,13 +157,7 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []Log
-	// cursor, err := lg.Coll.Find(context.Background(), queryFilter, opts)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// err = cursor.All(context.Background(), &docs)
-	err := mongoGetDocuments(lg.Coll, queryFilter, opts, &docs)
-
+	err := _mongoGetDocuments(lg.Coll, queryFilter, opts, &docs)
 	return docs, err
 }
 
@@ -342,7 +319,8 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog,
 }
 */
 
-func mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, options *options.FindOptions, results *[]T) error {
+// unexposed mongo specific utility function
+func _mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, options *options.FindOptions, results *[]T) error {
 	ctx := context.Background()
 	cur, err := coll.Find(ctx, filter, options)
 	if err != nil {
