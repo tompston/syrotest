@@ -3,7 +3,8 @@ package syro
 import "strings"
 
 // ErrGroup is a helper struct for cases when a single function
-// could have multiple ErrGroup.
+// could have multiple errors which should be accumulated,
+// instead of returning the first one.
 type ErrGroup []error
 
 // TODO: newline and identifiers?

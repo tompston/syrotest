@@ -13,7 +13,7 @@ import (
 
 func TestLogger(t *testing.T) {
 	t.Run("test-log-creation", func(t *testing.T) {
-		log := newLog(ERROR, "qweqwe", "my-source", "my-event", "my-event-id")
+		log := NewLog(ERROR, "qweqwe", "my-source", "my-event", "my-event-id")
 
 		decoded, err := decodeStructToStrings(log)
 		if err != nil {
@@ -131,17 +131,17 @@ func TestLogger(t *testing.T) {
 			t.Fatal("LogExists should always return a predefined error")
 		}
 	})
-
 }
 
 func TestErrGroup(t *testing.T) {
 	t.Run("test-new-errgroup", func(t *testing.T) {
 		eg := NewErrGroup()
 		if eg == nil {
-			t.Errorf("New() should not return nil")
+			t.Fatal("New() should not return nil")
 		}
+
 		if len(*eg) != 0 {
-			t.Errorf("New() should initialize an empty ErrGroup")
+			t.Fatal("New() should initialize an empty ErrGroup")
 		}
 	})
 
@@ -152,17 +152,17 @@ func TestErrGroup(t *testing.T) {
 
 		eg.Add(err1)
 		if len(*eg) != 1 {
-			t.Errorf("Add() did not properly add the first error")
+			t.Fatal("Add() did not properly add the first error")
 		}
 
 		eg.Add(err2)
 		if len(*eg) != 2 {
-			t.Errorf("Add() did not properly add the second error")
+			t.Fatal("Add() did not properly add the second error")
 		}
 
 		eg.Add(nil) // test adding nil error
 		if len(*eg) != 2 {
-			t.Errorf("Add() should not add nil errors")
+			t.Fatal("Add() should not add nil errors")
 		}
 	})
 
@@ -176,29 +176,29 @@ func TestErrGroup(t *testing.T) {
 
 		expected := "first error; second error"
 		if eg.Error() != expected {
-			t.Errorf("Error() returned %q, want %q", eg.Error(), expected)
+			t.Fatalf("Error() returned %q, want %q", eg.Error(), expected)
 		}
 
 		eg = NewErrGroup() // test with no errors
 		if eg.Error() != "" {
-			t.Errorf("Error() should return an empty string for an empty ErrGroup, got %q", eg.Error())
+			t.Fatalf("Error() should return an empty string for an empty ErrGroup, got %q", eg.Error())
 		}
 	})
 
 	t.Run("test-len", func(t *testing.T) {
 		eg := NewErrGroup()
 		if eg.Len() != 0 {
-			t.Errorf("Len() should return 0 for a new ErrGroup, got %d", eg.Len())
+			t.Fatalf("Len() should return 0 for a new ErrGroup, got %d", eg.Len())
 		}
 
 		eg.Add(errors.New("first error"))
 		if eg.Len() != 1 {
-			t.Errorf("Len() should return 1 after adding one error, got %d", eg.Len())
+			t.Fatalf("Len() should return 1 after adding one error, got %d", eg.Len())
 		}
 
 		eg.Add(nil) // adding nil should not change the count
 		if eg.Len() != 1 {
-			t.Errorf("Len() should still return 1 after adding nil, got %d", eg.Len())
+			t.Fatalf("Len() should still return 1 after adding nil, got %d", eg.Len())
 		}
 	})
 }

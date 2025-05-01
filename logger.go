@@ -14,6 +14,7 @@ type Logger interface {
 	Trace(msg string, lf ...LogFields) error
 	Fatal(msg string, lf ...LogFields) error
 
+	Name() string                             // Util method to figure out which implementation is used
 	GetTableName() string                     // GetTableName returns the name of the table where the logs are stored
 	FindLogs(filter LogFilter) ([]Log, error) // FindLogs returns the logs that match the provided filter
 	LogExists(filter any) (bool, error)       // LogExists checks if the log with the provided filter exists.
@@ -47,6 +48,21 @@ const (
 	FATAL LogLevel = 5
 )
 
+// LoggerSettings struct for storing the settings for the logger which are
+// used when printing the log to the console.
+type LoggerSettings struct {
+	Location   *time.Location
+	TimeFormat string
+}
+
+// DefaultLoggerSettings are the default settings for the logger, used if the
+// settings are not provided or location is nil.
+var DefaultLoggerSettings = &LoggerSettings{
+	Location:   time.UTC,
+	TimeFormat: "2006-01-02 15:04:05",
+	// TODO: optional disable for console
+}
+
 type LogFilter struct {
 	TimeseriesFilter `json:"timeseries_filter"`
 	Source           string    `json:"source"`
@@ -74,7 +90,7 @@ func (l LogLevel) String() string {
 	}
 }
 
-func newLog(level LogLevel, msg, source, event, eventID string, fields ...LogFields) Log {
+func NewLog(level LogLevel, msg, source, event, eventID string, fields ...LogFields) Log {
 	log := Log{
 		Time:    time.Now().UTC(),
 		Level:   level,
@@ -130,20 +146,6 @@ func (log Log) String(logger Logger) string {
 	return b.String()
 }
 
-// LoggerSettings struct for storing the settings for the logger which are
-// used when printing the log to the console.
-type LoggerSettings struct {
-	Location   *time.Location
-	TimeFormat string
-}
-
-// DefaultLoggerSettings are the default settings for the logger, used if the
-// settings are not provided or location is nil.
-var DefaultLoggerSettings = &LoggerSettings{
-	Location:   time.UTC,
-	TimeFormat: "2006-01-02 15:04:05",
-}
-
 type LoggerProps struct {
 	Settings *LoggerSettings
 	Source   string
@@ -171,10 +173,12 @@ func (lg *ConsoleLogger) GetProps() LoggerProps {
 	}
 }
 
+func (lg *ConsoleLogger) Name() string { return "console" }
+
 func (lg *ConsoleLogger) GetTableName() string { return "" }
 
 func (lg *ConsoleLogger) log(level LogLevel, msg string, lf ...LogFields) error {
-	log := newLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
+	log := NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
 	_, err := fmt.Print(log.String(lg))
 	return err
 }
