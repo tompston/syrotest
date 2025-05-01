@@ -67,7 +67,30 @@ func (lg *MongoLogger) SetEventID(v string) syro.Logger {
 
 func (lg *MongoLogger) log(level syro.LogLevel, msg string, lf ...syro.LogFields) error {
 	log := syro.NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
-	_, err := lg.Coll.InsertOne(context.Background(), log)
+
+	set := bson.M{
+		"time":    log.Time,
+		"level":   log.Level,
+		"message": log.Message,
+	}
+
+	if log.Source != "" {
+		set["source"] = log.Source
+	}
+
+	if log.Event != "" {
+		set["event"] = log.Event
+	}
+
+	if log.EventID != "" {
+		set["event_id"] = log.EventID
+	}
+
+	if len(log.Fields) > 0 {
+		set["fields"] = log.Fields
+	}
+
+	_, err := lg.Coll.InsertOne(context.Background(), set)
 	fmt.Print(log.String(lg))
 	return err
 }
