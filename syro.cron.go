@@ -19,10 +19,6 @@ type CronScheduler struct {
 }
 
 type CronStorage interface {
-	// SetOptions sets the storage options
-	SetOptions(CronStorageOptions) CronStorage
-	// GetStorageOptions returns the storage options
-	GetStorageOptions() CronStorageOptions
 	// FindCronJobs returns a list of all registered jobs
 	FindCronJobs() ([]CronJob, error)
 	// RegisterJob registers the details of the selected job
@@ -33,10 +29,6 @@ type CronStorage interface {
 	FindExecutions(CronExecFilter) ([]CronExecLog, error)
 	// SetJobsToInactive updates the status of the jobs for the given source. Useful when the app exits.
 	SetJobsToInactive(source string) error
-}
-
-type CronStorageOptions struct {
-	LogRuntime bool
 }
 
 func NewCronScheduler(cron *cron.Cron, source string) *CronScheduler {
@@ -62,11 +54,16 @@ func (s *CronScheduler) Register(j *Job) error {
 		return fmt.Errorf("cron cannot be nil")
 	}
 
-	if j.Freq == "" {
+	name := j.Name
+	freq := j.Freq
+	source := s.Source
+	descr := j.Description
+
+	if freq == "" {
 		return fmt.Errorf("frequency has to be specified")
 	}
 
-	if j.Name == "" {
+	if name == "" {
 		return fmt.Errorf("name has to be specified")
 	}
 
@@ -80,13 +77,6 @@ func (s *CronScheduler) Register(j *Job) error {
 			return fmt.Errorf("job with name %v already exists", j.Name)
 		}
 	}
-
-	// fmt.Printf("adding job %v with frequency %v\n", j.Name, j.Freq)
-
-	name := j.Name
-	freq := j.Freq
-	source := s.Source
-	descr := j.Description
 
 	storageIsSpecified := s.CronStorage != nil
 
