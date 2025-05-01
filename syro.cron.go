@@ -128,7 +128,7 @@ func (s *CronScheduler) Register(j *Job) error {
 			}
 		}
 
-		// todo: what should be done with errors?
+		// todo: what should be done with errors that happened in the job?
 
 	}, name))
 
