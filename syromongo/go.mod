@@ -3,7 +3,7 @@ module github.com/tompston/syromongo
 go 1.23.0
 
 require (
-	github.com/tompston/syro v0.0.0-20250412111644-067d73c23719
+	github.com/tompston/syro v0.0.0-20250501131000-59dd8d2f51fa
 	go.mongodb.org/mongo-driver v1.17.3
 )
 

@@ -46,6 +46,10 @@ func (lg *MongoLogger) GetProps() syro.LoggerProps {
 	}
 }
 
+func (lg *MongoLogger) Name() string {
+	return "mongo"
+}
+
 func (lg *MongoLogger) SetSource(v string) syro.Logger {
 	lg.Source = v
 	return lg
@@ -109,7 +113,7 @@ func (lg *MongoLogger) Fatal(msg string, lf ...syro.LogFields) error {
 }
 
 // FindLogs returns logs that match the filter
-func (lg *MongoLogger) FindLogs(filter syro.LogFilter) ([]syro.Log, error) {
+func (lg *MongoLogger) FindLogs(filter syro.LogFilter, maxLimit int) ([]syro.Log, error) {
 
 	queryFilter := bson.M{}
 
@@ -122,8 +126,9 @@ func (lg *MongoLogger) FindLogs(filter syro.LogFilter) ([]syro.Log, error) {
 		queryFilter["time"] = bson.M{"$gte": filter.From, "$lte": filter.To}
 	}
 
-	if filter.Level != nil && *filter.Level >= syro.TRACE && *filter.Level <= syro.FATAL {
-		queryFilter["level"] = *filter.Level
+	level := filter.Level
+	if level != nil && *level >= syro.TRACE && *level <= syro.FATAL {
+		queryFilter["level"] = *level
 	}
 
 	if filter.Source != "" {
@@ -138,7 +143,7 @@ func (lg *MongoLogger) FindLogs(filter syro.LogFilter) ([]syro.Log, error) {
 		queryFilter["event_id"] = filter.EventID
 	}
 
-	filter.TimeseriesFilter.Limit = 100
+	filter.TimeseriesFilter.Limit = int64(maxLimit)
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "time", Value: -1}}). // sort by time field in descending order

@@ -106,6 +106,12 @@ func TestLogger(t *testing.T) {
 			t.Fatal("Settings should be nil")
 		}
 
+		_log := NewConsoleLogger(nil)
+		_log.Info("my-message", LogFields{
+			"field1": "val1",
+			"field2": "val2",
+		})
+
 		if NewConsoleLogger(nil).SetEvent("my-event").GetProps().Event != "my-event" {
 			t.Fatal("SetEvent failed")
 		}
