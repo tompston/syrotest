@@ -3,6 +3,7 @@ package syromongo
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,6 +34,42 @@ func TestMongoLogger(t *testing.T) {
 	}
 
 	defer conn.Disconnect(context.Background())
+
+	t.Run("test-bson-unmarshalling", func(t *testing.T) {
+		log := syro.NewLog(syro.ERROR, "qweqwe", "my-source", "my-event", "my-event-id")
+
+		decodedBson, err := bson.MarshalExtJSON(&log, false, false)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		bsonStr := string(decodedBson)
+		fmt.Printf("bsonStr: %v\n", bsonStr)
+
+		if err := stringIncludes(bsonStr, []string{
+			`"time":{"$date":`,
+			`message":"qweqwe"`,
+			`"source":"my-source"`,
+			`"event":"my-event"`,
+			`"event_id":"my-event-id"`,
+		}); err != nil {
+			t.Fatal(err)
+		}
+
+		bsonBytes, err := bson.Marshal(log)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var parsedLog syro.Log
+		if err := bson.Unmarshal(bsonBytes, &parsedLog); err != nil {
+			t.Fatalf("BSON Unmarshal failed with error: %v", err)
+		}
+
+		if parsedLog.Time.Before(time.Now().Add(-2 * time.Second)) {
+			t.Fatal("The created_at time is not within the last 2 seconds")
+		}
+	})
 
 	t.Run("test log creation", func(t *testing.T) {
 		coll := conn.Database(dbName).Collection("test_syro_mongo_logger")
@@ -240,4 +277,18 @@ func randString(length int) string {
 		b[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(b)
+}
+
+// stringIncludes checks if the input string contains all of the strings in
+// the array. If the input string does not contain a strings from the
+// array, an error is returned.
+//
+// TODO: function repeated 2x times, make it as a part of the syro package
+func stringIncludes(s string, arr []string) error {
+	for _, str := range arr {
+		if !strings.Contains(s, str) {
+			return fmt.Errorf("input string '%s' does not include '%s'", s, str)
+		}
+	}
+	return nil
 }

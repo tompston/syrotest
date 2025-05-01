@@ -1,11 +1,10 @@
-package syromongo
+package syro
 
 import (
 	"context"
 	"errors"
 	"fmt"
 
-	"github.com/tompston/syro"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -13,13 +12,13 @@ import (
 
 type MongoLogger struct {
 	Coll     *mongo.Collection
-	Settings *syro.LoggerSettings
+	Settings *LoggerSettings
 	Source   string
 	Event    string
 	EventID  string
 }
 
-func NewMongoLogger(coll *mongo.Collection, settings *syro.LoggerSettings) *MongoLogger {
+func NewMongoLogger(coll *mongo.Collection, settings *LoggerSettings) *MongoLogger {
 	return &MongoLogger{Coll: coll, Settings: settings}
 }
 
@@ -37,8 +36,8 @@ func (lg *MongoLogger) GetTableName() string {
 	return lg.Coll.Name()
 }
 
-func (lg *MongoLogger) GetProps() syro.LoggerProps {
-	return syro.LoggerProps{
+func (lg *MongoLogger) GetProps() LoggerProps {
+	return LoggerProps{
 		Settings: lg.Settings,
 		Source:   lg.Source,
 		Event:    lg.Event,
@@ -50,23 +49,23 @@ func (lg *MongoLogger) Name() string {
 	return "mongo"
 }
 
-func (lg *MongoLogger) SetSource(v string) syro.Logger {
+func (lg *MongoLogger) SetSource(v string) Logger {
 	lg.Source = v
 	return lg
 }
 
-func (lg *MongoLogger) SetEvent(v string) syro.Logger {
+func (lg *MongoLogger) SetEvent(v string) Logger {
 	lg.Event = v
 	return lg
 }
 
-func (lg *MongoLogger) SetEventID(v string) syro.Logger {
+func (lg *MongoLogger) SetEventID(v string) Logger {
 	lg.EventID = v
 	return lg
 }
 
-func (lg *MongoLogger) log(level syro.LogLevel, msg string, lf ...syro.LogFields) error {
-	log := syro.NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
+func (lg *MongoLogger) log(level LogLevel, msg string, lf ...LogFields) error {
+	log := NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
 
 	set := bson.M{
 		"time":    log.Time,
@@ -100,7 +99,7 @@ func (lg *MongoLogger) LogExists(filter any) (bool, error) {
 		return false, errors.New("filter must have a bson.M type")
 	}
 
-	var log syro.Log
+	var log Log
 	if err := lg.Coll.FindOne(context.Background(), filter).Decode(&log); err != nil {
 		if err == mongo.ErrNoDocuments {
 			return false, nil
@@ -111,32 +110,32 @@ func (lg *MongoLogger) LogExists(filter any) (bool, error) {
 	return !log.Time.IsZero(), nil
 }
 
-func (lg *MongoLogger) Debug(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.DEBUG, msg, lf...)
+func (lg *MongoLogger) Debug(msg string, lf ...LogFields) error {
+	return lg.log(DEBUG, msg, lf...)
 }
 
-func (lg *MongoLogger) Trace(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.TRACE, msg, lf...)
+func (lg *MongoLogger) Trace(msg string, lf ...LogFields) error {
+	return lg.log(TRACE, msg, lf...)
 }
 
-func (lg *MongoLogger) Error(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.ERROR, msg, lf...)
+func (lg *MongoLogger) Error(msg string, lf ...LogFields) error {
+	return lg.log(ERROR, msg, lf...)
 }
 
-func (lg *MongoLogger) Info(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.INFO, msg, lf...)
+func (lg *MongoLogger) Info(msg string, lf ...LogFields) error {
+	return lg.log(INFO, msg, lf...)
 }
 
-func (lg *MongoLogger) Warn(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.WARN, msg, lf...)
+func (lg *MongoLogger) Warn(msg string, lf ...LogFields) error {
+	return lg.log(WARN, msg, lf...)
 }
 
-func (lg *MongoLogger) Fatal(msg string, lf ...syro.LogFields) error {
-	return lg.log(syro.FATAL, msg, lf...)
+func (lg *MongoLogger) Fatal(msg string, lf ...LogFields) error {
+	return lg.log(FATAL, msg, lf...)
 }
 
 // FindLogs returns logs that match the filter
-func (lg *MongoLogger) FindLogs(filter syro.LogFilter, maxLimit int) ([]syro.Log, error) {
+func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
 
 	queryFilter := bson.M{}
 
@@ -150,7 +149,7 @@ func (lg *MongoLogger) FindLogs(filter syro.LogFilter, maxLimit int) ([]syro.Log
 	}
 
 	level := filter.Level
-	if level != nil && *level >= syro.TRACE && *level <= syro.FATAL {
+	if level != nil && *level >= TRACE && *level <= FATAL {
 		queryFilter["level"] = *level
 	}
 
@@ -173,7 +172,7 @@ func (lg *MongoLogger) FindLogs(filter syro.LogFilter, maxLimit int) ([]syro.Log
 		SetLimit(filter.TimeseriesFilter.Limit).
 		SetSkip(filter.TimeseriesFilter.Skip)
 
-	var docs []syro.Log
+	var docs []Log
 	cursor, err := lg.Coll.Find(context.Background(), queryFilter, opts)
 	if err != nil {
 		return nil, err
