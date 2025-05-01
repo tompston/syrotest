@@ -9,7 +9,14 @@ type ErrGroup []error
 
 // TODO: newline and identifiers?
 
-func NewErrGroup() *ErrGroup { return &ErrGroup{} }
+type ErrGroupProps struct {
+	ID          string
+	WithNewline bool
+}
+
+func NewErrGroup(ep ...ErrGroupProps) *ErrGroup {
+	return &ErrGroup{}
+}
 
 func (eg *ErrGroup) Add(err error) {
 	if eg != nil && err != nil {
