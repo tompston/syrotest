@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -67,6 +68,9 @@ func (lg *MongoLogger) SetEventID(v string) Logger {
 
 func (lg *MongoLogger) log(level LogLevel, msg string, lf ...LogFields) error {
 	log := NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
+
+	// a custom set is defined because just using an InsertOne on the log
+	// struct will break the _id field.
 
 	set := bson.M{
 		"time":    log.Time,
@@ -163,10 +167,8 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
 
 //
 
-/*
 // MongoStorage implementation of the Storage interface
 type MongoCronStorage struct {
-	Options         CronStorageOptions
 	cronListColl    *mongo.Collection
 	cronHistoryColl *mongo.Collection
 }
@@ -177,23 +179,23 @@ func NewMongoCronStorage(cronListColl, cronHistoryColl *mongo.Collection) (*Mong
 		return nil, fmt.Errorf("collections cannot be nil")
 	}
 
-	// Create indexes for the collections
-	if err := mongodb.NewIndexes().
-		Add("name").
-		Add("status").
-		Add("frequency").
-		Create(cronListColl); err != nil {
-		return nil, err
-	}
+	// // Create indexes for the collections
+	// if err := mongodb.NewIndexes().
+	// 	Add("name").
+	// 	Add("status").
+	// 	Add("sched").
+	// 	Create(cronListColl); err != nil {
+	// 	return nil, err
+	// }
 
-	// Create indexes for the collections
-	if err := mongodb.NewIndexes().
-		Add("name").
-		Add("initialized_at").
-		Add("execution_time").
-		Create(cronHistoryColl); err != nil {
-		return nil, err
-	}
+	// // Create indexes for the collections
+	// if err := mongodb.NewIndexes().
+	// 	Add("name").
+	// 	Add("initialized_at").
+	// 	Add("execution_time").
+	// 	Create(cronHistoryColl); err != nil {
+	// 	return nil, err
+	// }
 
 	return &MongoCronStorage{
 		cronListColl:    cronListColl,
@@ -201,23 +203,14 @@ func NewMongoCronStorage(cronListColl, cronHistoryColl *mongo.Collection) (*Mong
 	}, nil
 }
 
-func (m *MongoCronStorage) SetOptions(opt CronStorageOptions) CronStorage {
-	m.Options = opt
-	return m
-}
-
-func (m *MongoCronStorage) GetStorageOptions() CronStorageOptions {
-	return m.Options
-}
-
 // TODO: refactor so that filter is a variadic parameter
 func (m *MongoCronStorage) FindCronJobs() ([]CronJob, error) {
 	var docs []CronJob
-	err := mongodb.mongoGetDocumentsWithTypes(m.cronListColl, bson.M{}, nil, &docs)
+	err := _mongoGetDocuments(m.cronListColl, bson.M{}, nil, &docs)
 	return docs, err
 }
 
-// TODO: test this function
+// TODO: test this function + remember about the list of current jobs and the previous jobs which are not included in the list
 func (m *MongoCronStorage) SetJobsToInactive(source string) error {
 	filter := bson.M{"source": source}
 	update := bson.M{"$set": bson.M{"status": JobStatusInactive}}
@@ -229,24 +222,24 @@ func (m *MongoCronStorage) SetJobsToInactive(source string) error {
 // and the job name. If the job does not exist, set the created_at
 // field to the current time. If the job already exists,
 // update the updated_at field to the current time.
-func (m *MongoCronStorage) RegisterJob(source, name, freq, descr string, status JobStatus, fnErr error) error {
+func (m *MongoCronStorage) RegisterJob(source, name, sched, descr string, status JobStatus, fnErr error) error {
 	filter := bson.M{
 		"source": source,
 		"name":   name,
 	}
 
 	set := bson.M{
-		"frequency":   freq,
-		"status":      status,
-		"descr": descr,
-		"updated_at":  time.Now().UTC(),
+		"sched":      sched,
+		"status":     status,
+		"descr":      descr,
+		"updated_at": time.Now().UTC(),
 	}
 
 	if fnErr != nil {
-		set["exited_with_error"] = true
+		set["exit_with_err"] = true
 		set["error"] = fnErr.Error()
 	} else {
-		set["exited_with_error"] = false
+		set["exit_with_err"] = false
 		set["error"] = ""
 	}
 
@@ -257,7 +250,7 @@ func (m *MongoCronStorage) RegisterJob(source, name, freq, descr string, status 
 	_, err := m.cronListColl.UpdateOne(context.Background(), filter, bson.M{
 		"$set":         set,
 		"$setOnInsert": bson.M{"created_at": time.Now().UTC()},
-	}, mongodb.UpsertOpt)
+	}, _mongoUpsertOpt)
 
 	return err
 }
@@ -298,26 +291,17 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog,
 	}
 
 	// limit := filter.TimeseriesFilter.Limit
-	limit := 200
+	limit := 200 // todo: change this
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "initialized_at", Value: -1}}).
 		SetLimit(int64(limit)).
 		SetSkip(filter.TimeseriesFilter.Skip)
 
-	// var docs []CronExecLog
-	// cursor, err := m.cronHistoryColl.Find(context.Background(), queryFilter, opts)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// err = cursor.All(context.Background(), &docs)
-
 	var docs []CronExecLog
-	err := mongoGetDocuments(m.cronHistoryColl, queryFilter, opts, &docs)
+	err := _mongoGetDocuments(m.cronHistoryColl, queryFilter, opts, &docs)
 	return docs, err
 }
-*/
 
 // unexposed mongo specific utility function
 func _mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, options *options.FindOptions, results *[]T) error {
@@ -330,3 +314,5 @@ func _mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, optio
 
 	return cur.All(ctx, results)
 }
+
+var _mongoUpsertOpt = options.Update().SetUpsert(true)

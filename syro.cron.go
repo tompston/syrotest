@@ -22,7 +22,7 @@ type CronStorage interface {
 	// FindCronJobs returns a list of all registered jobs
 	FindCronJobs() ([]CronJob, error)
 	// RegisterJob registers the details of the selected job
-	RegisterJob(source, name, frequency, descr string, status JobStatus, err error) error
+	RegisterJob(source, name, sched, descr string, status JobStatus, err error) error
 	// RegisterExecution registers the execution of a job if the storage is specified
 	RegisterExecution(*CronExecLog) error
 	// FindExecutions returns a list of job executions that match the filter
@@ -61,12 +61,12 @@ func (s *CronScheduler) Register(j *Job) error {
 	}
 
 	name := j.Name
-	freq := j.Freq
+	schedule := j.Schedule
 	source := s.Source
 	descr := j.Description
 
-	if freq == "" {
-		return fmt.Errorf("frequency has to be specified")
+	if schedule == "" {
+		return fmt.Errorf("schedule has to be specified")
 	}
 
 	if name == "" {
@@ -91,11 +91,11 @@ func (s *CronScheduler) Register(j *Job) error {
 	storageIsSpecified := s.CronStorage != nil
 
 	// NOTE: there is a slight inefficiency in the data that is written by
-	// the query because the (source, name, freq, descr) params are
+	// the query because the (source, name, schedule, descr) params are
 	// written each time in order to update the status.
 
 	if storageIsSpecified {
-		if err := s.CronStorage.RegisterJob(source, name, freq, descr, JobStatusInitialized, nil); err != nil {
+		if err := s.CronStorage.RegisterJob(source, name, schedule, descr, JobStatusInitialized, nil); err != nil {
 			return err
 		}
 	}
@@ -107,7 +107,7 @@ func (s *CronScheduler) Register(j *Job) error {
 		errors := NewErrGroup()
 
 		if storageIsSpecified {
-			if err := s.CronStorage.RegisterJob(s.Source, name, freq, descr, JobStatusRunning, nil); err != nil {
+			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusRunning, nil); err != nil {
 				errors.Add(fmt.Errorf("failed to set job %v to running: %v", name, err))
 			}
 		}
@@ -128,7 +128,7 @@ func (s *CronScheduler) Register(j *Job) error {
 				errors.Add(fmt.Errorf("failed to register execution for %v: %v", name, err))
 			}
 
-			if err := s.CronStorage.RegisterJob(s.Source, name, freq, descr, JobStatusDone, err); err != nil {
+			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusDone, err); err != nil {
 				errors.Add(fmt.Errorf("failed to set job %v to done: %v", name, err))
 			}
 		}
@@ -137,7 +137,7 @@ func (s *CronScheduler) Register(j *Job) error {
 
 	}, name)
 
-	if _, err := s.cron.AddJob(freq, joblock); err != nil {
+	if _, err := s.cron.AddJob(schedule, joblock); err != nil {
 		return err
 	}
 
@@ -158,7 +158,7 @@ func (s *CronScheduler) Start() { s.cron.Start() }
 // Job represents a cron job that can be registered with the CronScheduler.
 type Job struct {
 	Source      string       // Source of the job (like the name of application which registered the job)
-	Freq        string       // Frequency of the job in cron format
+	Schedule    string       // Schedule of the job (e.g. "0 0 * * *" or "@every 1h")
 	Name        string       // Name of the job
 	Func        func() error // Function to be executed by the job
 	Description string       // Optional. Description of the job
@@ -170,17 +170,17 @@ type Job struct {
 
 // CronJob stores information about the registered job
 type CronJob struct {
-	ID              string     `json:"_id" bson:"_id"`
-	CreatedAt       time.Time  `json:"created_at" bson:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at" bson:"updated_at"`
-	FinishedAt      *time.Time `json:"finished_at" bson:"finished_at"`
-	Source          string     `json:"source" bson:"source"`
-	Name            string     `json:"name" bson:"name"`
-	Status          string     `json:"status" bson:"status"`
-	Frequency       string     `json:"frequency" bson:"frequency"`
-	Description     string     `json:"descr" bson:"descr"`
-	Error           string     `json:"error" bson:"error"`
-	ExitedWithError bool       `json:"exited_with_error" bson:"exited_with_error"`
+	// ID              string     `json:"_id" bson:"_id"`
+	CreatedAt   time.Time  `json:"created_at" bson:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at" bson:"updated_at"`
+	FinishedAt  *time.Time `json:"finished_at" bson:"finished_at"`
+	Source      string     `json:"source" bson:"source"`
+	Name        string     `json:"name" bson:"name"`
+	Status      string     `json:"status" bson:"status"`
+	Schedule    string     `json:"sched" bson:"sched"`
+	Description string     `json:"descr" bson:"descr"`
+	Error       string     `json:"error" bson:"error"`
+	ExitWithErr bool       `json:"exit_with_err" bson:"exit_with_err"`
 }
 
 // CronExecLog stores information about the job execution
