@@ -1,6 +1,8 @@
 package syro
 
-import "strings"
+import (
+	"strings"
+)
 
 // ErrGroup is a helper struct for cases when a single function
 // could have multiple errors which should be accumulated,
@@ -9,8 +11,6 @@ type ErrGroup struct {
 	Errors []error
 	Props  *ErrGroupProps
 }
-
-// TODO: newline and identifiers?
 
 type ErrGroupProps struct {
 	ID          string

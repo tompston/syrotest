@@ -33,7 +33,7 @@ func TestLogger(t *testing.T) {
 			CreatedAt time.Time `json:"time" bson:"time"`
 		}
 
-		t.Run("test json unmarshalling", func(t *testing.T) {
+		t.Run("test-json-unmarshalling", func(t *testing.T) {
 			if err := stringIncludes(jsonStr, []string{
 				`"level":4`,
 				`message":"qweqwe"`,
@@ -111,7 +111,7 @@ func TestLogger(t *testing.T) {
 		}
 
 		if logExists {
-			t.Fatal("LogExists should always return false")
+			t.Fatal("LogExists should always return false for ConsoleLogger")
 		}
 
 		if err.Error() != "method cannot be used with ConsoleLogger" {
@@ -456,10 +456,6 @@ func stringIncludes(s string, arr []string) error {
 	return nil
 }
 
-func TestJobRunLocking(t *testing.T) {
-
-}
-
 func TestJobLocker(t *testing.T) {
 	t.Run("test-job-run", func(t *testing.T) {
 		counter := int32(0)
@@ -516,5 +512,4 @@ func TestJobLocker(t *testing.T) {
 			t.Fatalf("Expected job function to run once, but it ran %d times", counter)
 		}
 	})
-
 }

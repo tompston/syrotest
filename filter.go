@@ -38,6 +38,7 @@ func parseUrlToTimeseriesParams(vals url.Values) (*TimeseriesFilter, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'from' time format: %v", err)
 		}
+
 		filter.From = parsedFrom
 	}
 
@@ -47,6 +48,7 @@ func parseUrlToTimeseriesParams(vals url.Values) (*TimeseriesFilter, error) {
 		if err != nil {
 			return nil, fmt.Errorf("invalid 'to' time format: %v", err)
 		}
+
 		filter.To = parsedTo
 	}
 
@@ -56,6 +58,7 @@ func parseUrlToTimeseriesParams(vals url.Values) (*TimeseriesFilter, error) {
 		if err != nil || parsedLimit < 0 {
 			return nil, errors.New("invalid 'limit' value")
 		}
+
 		filter.Limit = parsedLimit
 	}
 
@@ -65,6 +68,7 @@ func parseUrlToTimeseriesParams(vals url.Values) (*TimeseriesFilter, error) {
 		if err != nil || parsedSkip < 0 {
 			return nil, errors.New("invalid 'skip' value")
 		}
+
 		filter.Skip = parsedSkip
 	}
 

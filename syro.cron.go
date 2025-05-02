@@ -88,13 +88,13 @@ func (s *CronScheduler) Register(j *Job) error {
 		}
 	}
 
-	storageIsSpecified := s.CronStorage != nil
+	storageSpecified := s.CronStorage != nil
 
 	// NOTE: there is a slight inefficiency in the data that is written by
 	// the query because the (source, name, schedule, descr) params are
 	// written each time in order to update the status.
 
-	if storageIsSpecified {
+	if storageSpecified {
 		if err := s.CronStorage.RegisterJob(source, name, schedule, descr, JobStatusInitialized, nil); err != nil {
 			return err
 		}
@@ -106,7 +106,7 @@ func (s *CronScheduler) Register(j *Job) error {
 		// Accumulate errors in the c.AddJob function, because the cron.Job param does not return anything
 		errors := NewErrGroup()
 
-		if storageIsSpecified {
+		if storageSpecified {
 			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusRunning, nil); err != nil {
 				errors.Add(fmt.Errorf("failed to set job %v to running: %v", name, err))
 			}
@@ -123,7 +123,7 @@ func (s *CronScheduler) Register(j *Job) error {
 			j.OnError(err)
 		}
 
-		if storageIsSpecified {
+		if storageSpecified {
 			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, jobStart, err)); err != nil {
 				errors.Add(fmt.Errorf("failed to register execution for %v: %v", name, err))
 			}
@@ -156,16 +156,18 @@ func (s *CronScheduler) Register(j *Job) error {
 func (s *CronScheduler) Start() { s.cron.Start() }
 
 // Job represents a cron job that can be registered with the CronScheduler.
+// TODO: add these in the logic and test them
+// TODO: add a context input for callbacks? so that it would be possible to optionally cancel the job if it takes longer than x to run
+// TODO: add retrys logic? + additional pause between them?
+// TODO: OnCancel callback?
 type Job struct {
 	Source      string       // Source of the job (like the name of application which registered the job)
 	Schedule    string       // Schedule of the job (e.g. "0 0 * * *" or "@every 1h")
 	Name        string       // Name of the job
 	Func        func() error // Function to be executed by the job
 	Description string       // Optional. Description of the job
-	// TODO: add these in the logic and test them
-	// TODO: add a context input so that it would be possible to optionally cancel the job if it takes longer than x to run
-	OnError    func(error) // Optional. Function to be executed if the job returns an error
-	OnComplete func(error) // Optional. Function to be executed when the job is completed.
+	OnError     func(error)  // Optional. Function to be executed if the job returns an error
+	OnComplete  func(error)  // Optional. Function to be executed when the job is completed.
 }
 
 // CronJob stores information about the registered job

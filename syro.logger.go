@@ -60,7 +60,7 @@ type LoggerSettings struct {
 var DefaultLoggerSettings = &LoggerSettings{
 	Location:   time.UTC,
 	TimeFormat: "2006-01-02 15:04:05",
-	// TODO: optional disable for console
+	// TODO: optional disable for console?
 }
 
 type LogFilter struct {
