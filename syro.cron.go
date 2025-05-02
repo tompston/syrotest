@@ -113,22 +113,22 @@ func (s *CronScheduler) Register(j *Job) error {
 		}
 
 		// Passed in job function which should be executed by the cron job
-		err := j.Func()
+		jobErr := j.Func()
 
 		if j.OnComplete != nil {
-			j.OnComplete(err)
+			j.OnComplete(jobErr)
 		}
 
-		if err != nil && j.OnError != nil {
-			j.OnError(err)
+		if jobErr != nil && j.OnError != nil {
+			j.OnError(jobErr)
 		}
 
 		if storageSpecified {
-			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, jobStart, err)); err != nil {
+			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, jobStart, jobErr)); err != nil {
 				errors.Add(fmt.Errorf("failed to register execution for %v: %v", name, err))
 			}
 
-			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusDone, err); err != nil {
+			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusDone, jobErr); err != nil {
 				errors.Add(fmt.Errorf("failed to set job %v to done: %v", name, err))
 			}
 		}

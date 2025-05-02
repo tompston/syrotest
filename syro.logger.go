@@ -14,14 +14,14 @@ type Logger interface {
 	Trace(msg string, lf ...LogFields) error
 	Fatal(msg string, lf ...LogFields) error
 
-	Name() string                                           // Util method to figure out which implementation is used
-	GetTableName() string                                   // GetTableName returns the name of the table where the logs are stored
-	FindLogs(filter LogFilter, maxLimit int) ([]Log, error) // FindLogs returns the logs that match the provided filter
-	LogExists(filter any) (bool, error)                     // LogExists checks if the log with the provided filter exists.
-	GetProps() LoggerProps                                  // GetProps returns the properties of the logger
-	SetSource(v string) Logger                              // SetSource sets the source of the log
-	SetEvent(v string) Logger                               // SetEvent sets the event of the log
-	SetEventID(v string) Logger                             // SetEventID sets the event id of the log
+	Name() string                                             // Util method to figure out which implementation is used
+	GetTableName() string                                     // GetTableName returns the name of the table where the logs are stored
+	FindLogs(filter LogFilter, maxLimit int64) ([]Log, error) // FindLogs returns the logs that match the provided filter
+	LogExists(filter any) (bool, error)                       // LogExists checks if the log with the provided filter exists.
+	GetProps() LoggerProps                                    // GetProps returns the properties of the logger
+	SetSource(v string) Logger                                // SetSource sets the source of the log
+	SetEvent(v string) Logger                                 // SetEvent sets the event of the log
+	SetEventID(v string) Logger                               // SetEventID sets the event id of the log
 }
 
 type Log struct {
@@ -212,6 +212,6 @@ func (lg *ConsoleLogger) LogExists(filter any) (bool, error) {
 	return false, fmt.Errorf("method cannot be used with ConsoleLogger")
 }
 
-func (lg *ConsoleLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
+func (lg *ConsoleLogger) FindLogs(filter LogFilter, maxLimit int64) ([]Log, error) {
 	return nil, fmt.Errorf("method cannot be used with ConsoleLogger")
 }

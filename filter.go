@@ -15,7 +15,7 @@ type TimeseriesFilter struct {
 	Skip  int64
 }
 
-func RequestLogs(l Logger, maxLimit int, urlPath string) ([]Log, error) {
+func RequestLogs(l Logger, maxLimit int64, urlPath string) ([]Log, error) {
 	if l == nil {
 		return nil, errors.New("logger is nil")
 	}

@@ -70,7 +70,8 @@ func (lg *MongoLogger) log(level LogLevel, msg string, lf ...LogFields) error {
 	log := NewLog(level, msg, lg.Source, lg.Event, lg.EventID, lf...)
 
 	// a custom set is defined because just using an InsertOne on the log
-	// struct will break the _id field.
+	// struct will break the _id field. omitempty does not work, if
+	// the field has a string type.
 
 	set := bson.M{
 		"time":    log.Time,
@@ -123,7 +124,7 @@ func (lg *MongoLogger) Warn(msg string, lf ...LogFields) error  { return lg.log(
 func (lg *MongoLogger) Fatal(msg string, lf ...LogFields) error { return lg.log(FATAL, msg, lf...) }
 
 // FindLogs returns logs that match the filter
-func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
+func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int64) ([]Log, error) {
 
 	queryFilter := bson.M{}
 
@@ -153,11 +154,14 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int) ([]Log, error) {
 		queryFilter["event_id"] = filter.EventID
 	}
 
-	filter.TimeseriesFilter.Limit = int64(maxLimit)
+	limit := filter.TimeseriesFilter.Limit
+	if limit > maxLimit {
+		limit = maxLimit
+	}
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "time", Value: -1}}). // sort by time field in descending order
-		SetLimit(filter.TimeseriesFilter.Limit).
+		SetLimit(limit).
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []Log
@@ -269,13 +273,15 @@ func (m *MongoCronStorage) RegisterExecution(ex *CronExecLog) error {
 func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog, error) {
 	queryFilter := bson.M{}
 
+	from, to := filter.From, filter.To
+
 	// if the from and to fields are not zero, add them to the query filter
-	if !filter.From.IsZero() && !filter.To.IsZero() {
-		if filter.From.After(filter.To) {
+	if !from.IsZero() && !to.IsZero() {
+		if from.After(to) {
 			return nil, errors.New("from date cannot be after to date")
 		}
 
-		queryFilter["time"] = bson.M{"$gte": filter.From, "$lte": filter.To}
+		queryFilter["time"] = bson.M{"$gte": from, "$lte": to}
 	}
 
 	if filter.Source != "" {
