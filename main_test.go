@@ -30,17 +30,17 @@ func TestLogger(t *testing.T) {
 		// parse the created_at field from the json string and check it the time is
 		// within the last 2 seconds
 		type parsed struct {
-			CreatedAt time.Time `json:"time" bson:"time"`
+			CreatedAt time.Time `json:"timestamp" bson:"timestamp"`
 		}
 
 		t.Run("test-json-unmarshalling", func(t *testing.T) {
 			if err := stringIncludes(jsonStr, []string{
-				`"level":4`,
+				`"level":5`,
 				`message":"qweqwe"`,
 				`"source":"my-source"`,
 				`"event":"my-event"`,
 				`"event_id":"my-event-id"`,
-				`"time":`,
+				`"timestamp":`,
 			}); err != nil {
 				t.Fatal(err)
 			}
@@ -221,7 +221,7 @@ func TestMongoLogger(t *testing.T) {
 		fmt.Printf("bsonStr: %v\n", bsonStr)
 
 		if err := stringIncludes(bsonStr, []string{
-			`"time":{"$date":`,
+			`"ts":{"$date":`,
 			`message":"qweqwe"`,
 			`"source":"my-source"`,
 			`"event":"my-event"`,
@@ -240,7 +240,7 @@ func TestMongoLogger(t *testing.T) {
 			t.Fatalf("BSON Unmarshal failed with error: %v", err)
 		}
 
-		if parsedLog.Time.Before(time.Now().Add(-2 * time.Second)) {
+		if parsedLog.Timestamp.Before(time.Now().Add(-2 * time.Second)) {
 			t.Fatal("The created_at time is not within the last 2 seconds")
 		}
 	})
@@ -292,7 +292,7 @@ func TestMongoLogger(t *testing.T) {
 		}
 
 		// if the time is not within the last 2 seconds
-		if log.Time.Before(time.Now().Add(-2 * time.Second)) {
+		if log.Timestamp.Before(time.Now().Add(-2 * time.Second)) {
 			t.Fatal("The created_at time is not within the last 2 seconds")
 		}
 	})

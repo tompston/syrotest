@@ -26,7 +26,7 @@ func NewMongoLogger(coll *mongo.Collection, settings *LoggerSettings) *MongoLogg
 
 func (lg *MongoLogger) CreateIndexes() error {
 	return newMongoIndexes().
-		Add("time", "level").
+		Add("timestamp", "level").
 		Add("source", "event").
 		Add("event_id").
 		Create(lg.Coll)
@@ -72,9 +72,9 @@ func (lg *MongoLogger) log(level LogLevel, msg string, lf ...LogFields) error {
 	// the field has a string type.
 
 	set := bson.M{
-		"time":    log.Time,
-		"level":   log.Level,
-		"message": log.Message,
+		"timestamp": log.Timestamp,
+		"level":     log.Level,
+		"message":   log.Message,
 	}
 
 	if log.Source != "" {
@@ -111,7 +111,7 @@ func (lg *MongoLogger) LogExists(filter any) (bool, error) {
 		return false, err
 	}
 
-	return !log.Time.IsZero(), nil
+	return !log.Timestamp.IsZero(), nil
 }
 
 func (lg *MongoLogger) Debug(msg string, lf ...LogFields) error { return lg.log(DEBUG, msg, lf...) }
@@ -132,7 +132,7 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int64) ([]Log, error)
 			return nil, errors.New("'from' date cannot be after 'to' date")
 		}
 
-		queryFilter["time"] = bson.M{"$gte": filter.From, "$lte": filter.To}
+		queryFilter["timestamp"] = bson.M{"$gte": filter.From, "$lte": filter.To}
 	}
 
 	level := filter.Level
@@ -152,14 +152,14 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int64) ([]Log, error)
 		queryFilter["event_id"] = filter.EventID
 	}
 
-	limit := filter.TimeseriesFilter.Limit
-	if limit > maxLimit {
-		limit = maxLimit
+	userLimit := filter.TimeseriesFilter.Limit
+	if userLimit > maxLimit {
+		userLimit = maxLimit
 	}
 
 	opts := options.Find().
-		SetSort(bson.D{{Key: "time", Value: -1}}). // sort by time field in descending order
-		SetLimit(limit).
+		SetSort(bson.D{{Key: "timestamp", Value: -1}}). // sort by time field in descending order
+		SetLimit(userLimit).
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []Log
@@ -274,7 +274,7 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter, maxLimit int64)
 			return nil, errors.New("from date cannot be after to date")
 		}
 
-		queryFilter["time"] = bson.M{"$gte": from, "$lte": to}
+		queryFilter["initialized_at"] = bson.M{"$gte": from, "$lte": to}
 	}
 
 	if filter.Source != "" {
@@ -289,14 +289,14 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter, maxLimit int64)
 		queryFilter["execution_time"] = bson.M{"$gte": filter.ExecutionTime}
 	}
 
-	limit := filter.TimeseriesFilter.Limit
-	if limit > maxLimit {
-		limit = maxLimit
+	userLimit := filter.TimeseriesFilter.Limit
+	if userLimit > maxLimit {
+		userLimit = maxLimit
 	}
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "initialized_at", Value: -1}}).
-		SetLimit(int64(limit)).
+		SetLimit(int64(userLimit)).
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []CronExecLog

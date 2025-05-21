@@ -25,17 +25,17 @@ type Logger interface {
 }
 
 type Log struct {
-	Time    time.Time `json:"time" bson:"time"`                             // Time of the log (UTC)
-	ID      string    `json:"_id" bson:"_id"`                               // (not logged to the console)
-	Message string    `json:"message" bson:"message"`                       // Logged message
-	Source  string    `json:"source,omitempty" bson:"source,omitempty"`     // Source of the log (api, pooler, etc.)
-	Event   string    `json:"event,omitempty" bson:"event,omitempty"`       // Event of the log (api-auth-request, binance-eth-pooler, etc.)
-	EventID string    `json:"event_id,omitempty" bson:"event_id,omitempty"` // (not logged to the console)
-	Fields  LogFields `json:"fields,omitempty" bson:"fields,omitempty"`     // Optional fields
-	Level   LogLevel  `json:"level" bson:"level"`                           // Log level
+	Timestamp time.Time `json:"timestamp" bson:"timestamp"`                   // Time of the log (UTC)
+	ID        string    `json:"_id" bson:"_id"`                               // (not logged to the console)
+	Message   string    `json:"message" bson:"message"`                       // Logged message
+	Source    string    `json:"source,omitempty" bson:"source,omitempty"`     // Source of the log (api, pooler, etc.)
+	Event     string    `json:"event,omitempty" bson:"event,omitempty"`       // Event of the log (api-auth-request, binance-eth-pooler, etc.)
+	EventID   string    `json:"event_id,omitempty" bson:"event_id,omitempty"` // (not logged to the console)
+	Fields    LogFields `json:"fields,omitempty" bson:"fields,omitempty"`     // Optional fields
+	Level     LogLevel  `json:"level" bson:"level"`                           // Log level
 }
 
-type LogFields map[string]interface{}
+type LogFields map[string]any
 
 type LogLevel int
 
@@ -93,12 +93,12 @@ func (l LogLevel) String() string {
 
 func NewLog(level LogLevel, msg, source, event, eventID string, fields ...LogFields) Log {
 	log := Log{
-		Time:    time.Now().UTC(),
-		Level:   level,
-		Message: msg,
-		Source:  source,
-		Event:   event,
-		EventID: eventID,
+		Timestamp: time.Now().UTC(),
+		Level:     level,
+		Message:   msg,
+		Source:    source,
+		Event:     event,
+		EventID:   eventID,
 	}
 
 	if len(fields) == 1 {
@@ -124,7 +124,7 @@ func (log Log) String(logger Logger) string {
 
 	var b strings.Builder
 
-	b.WriteString(log.Time.In(settings.Location).Format(settings.TimeFormat))
+	b.WriteString(log.Timestamp.In(settings.Location).Format(settings.TimeFormat))
 	b.WriteString("  ")
 	b.WriteString(fmt.Sprintf("%-6s", log.Level.String()))
 	b.WriteString("  ")
