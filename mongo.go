@@ -25,13 +25,11 @@ func NewMongoLogger(coll *mongo.Collection, settings *LoggerSettings) *MongoLogg
 }
 
 func (lg *MongoLogger) CreateIndexes() error {
-	// return mongodb.NewIndexes().
-	// 	Add("time", "level").
-	// 	Add("source").
-	// 	Add("event").
-	// 	Add("event_id").
-	// 	Create(lg.Coll)
-	return nil
+	return newMongoIndexes().
+		Add("time", "level").
+		Add("source", "event").
+		Add("event_id").
+		Create(lg.Coll)
 }
 
 func (lg *MongoLogger) GetTableName() string {
@@ -165,11 +163,11 @@ func (lg *MongoLogger) FindLogs(filter LogFilter, maxLimit int64) ([]Log, error)
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []Log
-	err := _mongoGetDocuments(lg.Coll, queryFilter, opts, &docs)
+	err := mongoGetDocuments(lg.Coll, queryFilter, opts, &docs)
 	return docs, err
 }
 
-//
+// --------------- Cron Job Logic ---------------
 
 // MongoStorage implementation of the Storage interface
 type MongoCronStorage struct {
@@ -177,29 +175,10 @@ type MongoCronStorage struct {
 	cronHistoryColl *mongo.Collection
 }
 
-// NOTE: add optional auto delete index?
 func NewMongoCronStorage(cronListColl, cronHistoryColl *mongo.Collection) (*MongoCronStorage, error) {
 	if cronListColl == nil || cronHistoryColl == nil {
 		return nil, fmt.Errorf("collections cannot be nil")
 	}
-
-	// // Create indexes for the collections
-	// if err := mongodb.NewIndexes().
-	// 	Add("name").
-	// 	Add("status").
-	// 	Add("sched").
-	// 	Create(cronListColl); err != nil {
-	// 	return nil, err
-	// }
-
-	// // Create indexes for the collections
-	// if err := mongodb.NewIndexes().
-	// 	Add("name").
-	// 	Add("initialized_at").
-	// 	Add("execution_time").
-	// 	Create(cronHistoryColl); err != nil {
-	// 	return nil, err
-	// }
 
 	return &MongoCronStorage{
 		cronListColl:    cronListColl,
@@ -207,10 +186,24 @@ func NewMongoCronStorage(cronListColl, cronHistoryColl *mongo.Collection) (*Mong
 	}, nil
 }
 
+func (m *MongoCronStorage) CreateIndexes() error {
+	// Create indexes for the collections
+	if err := newMongoIndexes().Add("source", "name").Add("status").Create(m.cronListColl); err != nil {
+		return err
+	}
+
+	// Create indexes for the collections
+	if err := newMongoIndexes().Add("source", "name").Add("initialized_at").Create(m.cronHistoryColl); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // TODO: refactor so that filter is a variadic parameter
 func (m *MongoCronStorage) FindCronJobs() ([]CronJob, error) {
 	var docs []CronJob
-	err := _mongoGetDocuments(m.cronListColl, bson.M{}, nil, &docs)
+	err := mongoGetDocuments(m.cronListColl, bson.M{}, nil, &docs)
 	return docs, err
 }
 
@@ -254,7 +247,7 @@ func (m *MongoCronStorage) RegisterJob(source, name, sched, descr string, status
 	_, err := m.cronListColl.UpdateOne(context.Background(), filter, bson.M{
 		"$set":         set,
 		"$setOnInsert": bson.M{"created_at": time.Now().UTC()},
-	}, _mongoUpsertOpt)
+	}, mongoUpsertOpt)
 
 	return err
 }
@@ -305,12 +298,12 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog,
 		SetSkip(filter.TimeseriesFilter.Skip)
 
 	var docs []CronExecLog
-	err := _mongoGetDocuments(m.cronHistoryColl, queryFilter, opts, &docs)
+	err := mongoGetDocuments(m.cronHistoryColl, queryFilter, opts, &docs)
 	return docs, err
 }
 
 // unexposed mongo specific utility function
-func _mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, options *options.FindOptions, results *[]T) error {
+func mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, options *options.FindOptions, results *[]T) error {
 	ctx := context.Background()
 	cur, err := coll.Find(ctx, filter, options)
 	if err != nil {
@@ -321,4 +314,46 @@ func _mongoGetDocuments[T any](coll *mongo.Collection, filter primitive.M, optio
 	return cur.All(ctx, results)
 }
 
-var _mongoUpsertOpt = options.Update().SetUpsert(true)
+var mongoUpsertOpt = options.Update().SetUpsert(true)
+
+// mongoIndexBuilder is a helper for creating indexes for a MongoDB collection
+// in a more reusable way.
+type mongoIndexBuilder struct {
+	indexes []mongo.IndexModel
+}
+
+func newMongoIndexes() *mongoIndexBuilder { return &mongoIndexBuilder{} }
+
+// Add adds a new index to the mongoIndexBuilder. It supports both single and compound
+// indexes. All indexes are created in descending order.
+func (ib *mongoIndexBuilder) Add(keys ...string) *mongoIndexBuilder {
+	indexKeys := bson.D{}
+	for _, key := range keys {
+		indexKeys = append(indexKeys, bson.E{Key: key, Value: -1})
+	}
+	indexModel := mongo.IndexModel{Keys: indexKeys}
+	ib.indexes = append(ib.indexes, indexModel)
+	return ib
+}
+
+// Create creates all the indexes that have been added to the mongoIndexBuilder.
+func (ib *mongoIndexBuilder) Create(coll *mongo.Collection) error {
+	if ib == nil {
+		return fmt.Errorf("ib is nil")
+	}
+
+	if coll == nil {
+		return fmt.Errorf("coll is nil")
+	}
+
+	if len(ib.indexes) == 0 {
+		return fmt.Errorf("no indexes to create")
+	}
+
+	_, err := coll.Indexes().CreateMany(context.Background(), ib.indexes)
+	if err != nil {
+		return fmt.Errorf("failed to create indexes for %v collection: %v", coll.Name(), err)
+	}
+
+	return nil
+}

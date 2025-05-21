@@ -45,8 +45,6 @@ func (s *CronScheduler) WithStorage(storage CronStorage) *CronScheduler {
 // mutex lock to prevent the execution of the job if it is already running.
 // If a storage interface is provided, the job and job execution logs
 // will be stored using it
-//
-// TODO: should job be a pointer?
 func (s *CronScheduler) Register(j *Job) error {
 	if j == nil {
 		return fmt.Errorf("job cannot be nil")
@@ -89,6 +87,7 @@ func (s *CronScheduler) Register(j *Job) error {
 	}
 
 	storageSpecified := s.CronStorage != nil
+	loggerSpecified := j.Logger != nil
 
 	// NOTE: there is a slight inefficiency in the data that is written by
 	// the query because the (source, name, schedule, descr) params are
@@ -104,11 +103,16 @@ func (s *CronScheduler) Register(j *Job) error {
 
 		jobStart := time.Now()
 		// Accumulate errors in the c.AddJob function, because the cron.Job param does not return anything
-		errors := NewErrGroup()
 
 		if storageSpecified {
 			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusRunning, nil); err != nil {
-				errors.Add(fmt.Errorf("failed to set job %v to running: %v", name, err))
+				if loggerSpecified {
+					j.Logger.Error("failed to set job to running", LogFields{
+						"source": source,
+						"name":   name,
+						"error":  err.Error(),
+					})
+				}
 			}
 		}
 
@@ -125,15 +129,25 @@ func (s *CronScheduler) Register(j *Job) error {
 
 		if storageSpecified {
 			if err := s.CronStorage.RegisterExecution(newCronExecutionLog(source, name, jobStart, jobErr)); err != nil {
-				errors.Add(fmt.Errorf("failed to register execution for %v: %v", name, err))
+				if loggerSpecified {
+					j.Logger.Error("failed to register execution", LogFields{
+						"source": source,
+						"name":   name,
+						"error":  err.Error(),
+					})
+				}
 			}
 
 			if err := s.CronStorage.RegisterJob(s.Source, name, schedule, descr, JobStatusDone, jobErr); err != nil {
-				errors.Add(fmt.Errorf("failed to set job %v to done: %v", name, err))
+				if loggerSpecified {
+					j.Logger.Error("failed to set job to done", LogFields{
+						"source": source,
+						"name":   name,
+						"error":  err.Error(),
+					})
+				}
 			}
 		}
-
-		// todo: what should be done with errors that happened in the job?
 
 	}, name)
 
@@ -153,13 +167,14 @@ func (s *CronScheduler) Register(j *Job) error {
 // calling this function (e.g. time.Sleep(1 * time.Hour) or forever)
 //
 // TODO: based on the source, the cron jobs which are not in the current list should be set to disbaled.
-func (s *CronScheduler) Start() { s.cron.Start() }
+func (s *CronScheduler) Start() {
+	s.cron.Start()
+}
 
 // Job represents a cron job that can be registered with the CronScheduler.
-// TODO: add these in the logic and test them
+// TODO: test callbacks
 // TODO: add a context input for callbacks? so that it would be possible to optionally cancel the job if it takes longer than x to run
 // TODO: add retrys logic? + additional pause between them?
-// TODO: OnCancel callback?
 type Job struct {
 	Source      string       // Source of the job (like the name of application which registered the job)
 	Schedule    string       // Schedule of the job (e.g. "0 0 * * *" or "@every 1h")
@@ -168,6 +183,7 @@ type Job struct {
 	Description string       // Optional. Description of the job
 	OnError     func(error)  // Optional. Function to be executed if the job returns an error
 	OnComplete  func(error)  // Optional. Function to be executed when the job is completed.
+	Logger      Logger       // Optional. Used to log the errors for the cron registration
 }
 
 // CronJob stores information about the registered job
