@@ -263,7 +263,7 @@ func (m *MongoCronStorage) RegisterExecution(ex *CronExecLog) error {
 }
 
 // FindExecutions returns a list of executions based on the filter
-func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog, error) {
+func (m *MongoCronStorage) FindExecutions(filter CronExecFilter, maxLimit int64) ([]CronExecLog, error) {
 	queryFilter := bson.M{}
 
 	from, to := filter.From, filter.To
@@ -289,8 +289,10 @@ func (m *MongoCronStorage) FindExecutions(filter CronExecFilter) ([]CronExecLog,
 		queryFilter["execution_time"] = bson.M{"$gte": filter.ExecutionTime}
 	}
 
-	// limit := filter.TimeseriesFilter.Limit
-	limit := 200 // todo: change this
+	limit := filter.TimeseriesFilter.Limit
+	if limit > maxLimit {
+		limit = maxLimit
+	}
 
 	opts := options.Find().
 		SetSort(bson.D{{Key: "initialized_at", Value: -1}}).
@@ -350,8 +352,7 @@ func (ib *mongoIndexBuilder) Create(coll *mongo.Collection) error {
 		return fmt.Errorf("no indexes to create")
 	}
 
-	_, err := coll.Indexes().CreateMany(context.Background(), ib.indexes)
-	if err != nil {
+	if _, err := coll.Indexes().CreateMany(context.Background(), ib.indexes); err != nil {
 		return fmt.Errorf("failed to create indexes for %v collection: %v", coll.Name(), err)
 	}
 

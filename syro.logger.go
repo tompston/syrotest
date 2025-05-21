@@ -40,12 +40,13 @@ type LogFields map[string]interface{}
 type LogLevel int
 
 const (
-	TRACE LogLevel = 0
-	DEBUG LogLevel = 1
-	INFO  LogLevel = 2
-	WARN  LogLevel = 3
-	ERROR LogLevel = 4
-	FATAL LogLevel = 5
+	// Log levels start from 1, because of the default value problem.
+	TRACE LogLevel = 1
+	DEBUG LogLevel = 2
+	INFO  LogLevel = 3
+	WARN  LogLevel = 4
+	ERROR LogLevel = 5
+	FATAL LogLevel = 6
 )
 
 // LoggerSettings struct for storing the settings for the logger which are
