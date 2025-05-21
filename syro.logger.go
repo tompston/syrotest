@@ -56,11 +56,13 @@ type LoggerSettings struct {
 	TimeFormat string
 }
 
+const defaultTimeFormat = "2006-01-02 15:04:05"
+
 // DefaultLoggerSettings are the default settings for the logger, used if the
 // settings are not provided or location is nil.
 var DefaultLoggerSettings = &LoggerSettings{
 	Location:   time.UTC,
-	TimeFormat: "2006-01-02 15:04:05",
+	TimeFormat: defaultTimeFormat,
 	// TODO: optional disable for console?
 }
 
@@ -124,7 +126,12 @@ func (log Log) String(logger Logger) string {
 
 	var b strings.Builder
 
-	b.WriteString(log.Timestamp.In(settings.Location).Format(settings.TimeFormat))
+	timeformat := settings.TimeFormat
+	if timeformat == "" {
+		timeformat = defaultTimeFormat
+	}
+
+	b.WriteString(log.Timestamp.In(settings.Location).Format(timeformat))
 	b.WriteString("  ")
 	b.WriteString(fmt.Sprintf("%-6s", log.Level.String()))
 	b.WriteString("  ")
