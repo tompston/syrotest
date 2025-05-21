@@ -19,9 +19,9 @@ type Logger interface {
 	FindLogs(filter LogFilter, maxLimit int64) ([]Log, error) // FindLogs returns the logs that match the provided filter
 	LogExists(filter any) (bool, error)                       // LogExists checks if the log with the provided filter exists.
 	GetProps() LoggerProps                                    // GetProps returns the properties of the logger
-	SetSource(v string) Logger                                // SetSource sets the source of the log
-	SetEvent(v string) Logger                                 // SetEvent sets the event of the log
-	SetEventID(v string) Logger                               // SetEventID sets the event id of the log
+	WithSource(v string) Logger                               // WithSource sets the source of the log
+	WithEvent(v string) Logger                                // WithEvent sets the event of the log
+	WithEventID(v string) Logger                              // WithEventID sets the event id of the log
 }
 
 type Log struct {
@@ -187,17 +187,17 @@ func (lg *ConsoleLogger) log(level LogLevel, msg string, lf ...LogFields) error 
 	return err
 }
 
-func (lg *ConsoleLogger) SetSource(v string) Logger {
+func (lg *ConsoleLogger) WithSource(v string) Logger {
 	lg.Source = v
 	return lg
 }
 
-func (lg *ConsoleLogger) SetEvent(v string) Logger {
+func (lg *ConsoleLogger) WithEvent(v string) Logger {
 	lg.Event = v
 	return lg
 }
 
-func (lg *ConsoleLogger) SetEventID(v string) Logger {
+func (lg *ConsoleLogger) WithEventID(v string) Logger {
 	lg.EventID = v
 	return lg
 }

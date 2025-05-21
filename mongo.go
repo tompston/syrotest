@@ -49,17 +49,17 @@ func (lg *MongoLogger) Name() string {
 	return "mongo"
 }
 
-func (lg *MongoLogger) SetSource(v string) Logger {
+func (lg *MongoLogger) WithSource(v string) Logger {
 	lg.Source = v
 	return lg
 }
 
-func (lg *MongoLogger) SetEvent(v string) Logger {
+func (lg *MongoLogger) WithEvent(v string) Logger {
 	lg.Event = v
 	return lg
 }
 
-func (lg *MongoLogger) SetEventID(v string) Logger {
+func (lg *MongoLogger) WithEventID(v string) Logger {
 	lg.EventID = v
 	return lg
 }

@@ -5,6 +5,6 @@ import (
 )
 
 func main() {
-	logger := syro.NewConsoleLogger(nil).SetSource("my-event").SetEvent("my-source")
+	logger := syro.NewConsoleLogger(nil).WithSource("my-event").WithEvent("my-source")
 	logger.Info("Hello World")
 }

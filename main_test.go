@@ -93,16 +93,16 @@ func TestLogger(t *testing.T) {
 			"field2": "val2",
 		})
 
-		if NewConsoleLogger(nil).SetEvent("my-event").GetProps().Event != "my-event" {
+		if NewConsoleLogger(nil).WithEvent("my-event").GetProps().Event != "my-event" {
 			t.Fatal("SetEvent failed")
 		}
 
 		lg := NewConsoleLogger(nil).
-			SetSource("my-source").
-			SetEventID("my-event-id")
+			WithSource("my-source").
+			WithEventID("my-event-id")
 
 		if lg.GetProps().Source != "my-source" && lg.GetProps().EventID != "my-event-id" {
-			t.Fatal("SetEventID failed")
+			t.Fatal("WithEventID failed")
 		}
 
 		logExists, err := NewConsoleLogger(nil).LogExists(nil)
@@ -347,7 +347,7 @@ func TestMongoLogger(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		logger := NewMongoLogger(coll, nil).SetEventID("my-event-id")
+		logger := NewMongoLogger(coll, nil).WithEventID("my-event-id")
 
 		if err := logger.Info("my unique info event"); err != nil {
 			t.Fatal(err)
@@ -387,7 +387,7 @@ func TestMongoLogger(t *testing.T) {
 		msg := "this is a test"
 		numLogs := 10
 
-		logger := NewMongoLogger(coll, nil).SetEventID("my-event-id")
+		logger := NewMongoLogger(coll, nil).WithEventID("my-event-id")
 		for range numLogs {
 			logger.Debug(msg)
 		}
