@@ -104,3 +104,53 @@ func parseLogsQuery(fullUrl string) (*LogFilter, error) {
 
 	return &filter, nil
 }
+
+// LogPayload is a util struct of data that can be parsable from outside sources
+type LogPayload struct {
+	Message string    `json:"message"`
+	Source  string    `json:"source"`
+	Event   string    `json:"event"`
+	EventID string    `json:"event_id"`
+	Fields  LogFields `json:"fields"`
+	Level   string    `json:"level"`
+}
+
+func ParseLogs(body []LogPayload) ([]Log, error) {
+	if len(body) == 0 {
+		return nil, errors.New("no logs to parse")
+	}
+
+	logs := make([]Log, len(body))
+
+	for i, b := range body {
+		level := LogLevel(0)
+		switch b.Level {
+		case "error":
+			level = ERROR
+		case "info":
+			level = INFO
+		case "debug":
+			level = DEBUG
+		case "warn":
+			level = WARN
+		case "trace":
+			level = TRACE
+		case "fatal":
+			level = FATAL
+		default:
+			return nil, fmt.Errorf("invalid log level: %s", b.Level)
+		}
+
+		logs[i] = Log{
+			Timestamp: time.Now().UTC(),
+			Message:   b.Message,
+			Source:    b.Source,
+			Event:     b.Event,
+			EventID:   b.EventID,
+			Fields:    b.Fields,
+			Level:     level,
+		}
+	}
+
+	return logs, nil
+}
